@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>monday.com Dashboards: Teramind Connectivity</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>monday.com Dashboards</h1>
+    <span id="whoami" class="muted"></span>
+  </header>
+
+  <main class="container">
+    <!-- 1. Connect -->
+    <section class="card" id="connect-card">
+      <h2>1. Load your data</h2>
+      <p class="muted small">
+        <b>Option A: live from monday.com.</b> Paste your personal API token. Get it in monday.com: click your avatar, then
+        <b>Developers</b>, then <b>My access tokens</b>, then <b>Show</b>.
+        The token stays in this browser and is sent only to <code>api.monday.com</code>.
+      </p>
+      <div class="row">
+        <input id="token" type="password" placeholder="Paste API token…" autocomplete="off" />
+        <button id="btn-connect" class="primary">Connect</button>
+        <button id="btn-forget">Forget</button>
+      </div>
+      <label class="small"><input id="remember" type="checkbox" /> Remember on this device</label>
+
+      <p class="muted small" style="margin-top:14px">
+        <b>Option B: upload the board export</b> (e.g. <code>TCOE_PMO_Onboarding_*.xlsx</code>). The file is read in your browser and never uploaded anywhere.
+      </p>
+      <div class="row">
+        <label class="file-btn">Upload export (.xlsx)<input id="xlsx-file" type="file" accept=".xlsx" hidden /></label>
+        <span class="small muted">or <a href="#" id="btn-demo">try with demo data</a></span>
+      </div>
+    </section>
+
+    <!-- 2. Board picker -->
+    <section class="card hidden" id="board-card">
+      <h2>2. Pick a board</h2>
+      <div class="row">
+        <select id="board-select"></select>
+        <button id="btn-load" class="primary">Build dashboard</button>
+        <button id="btn-refresh">Refresh</button>
+      </div>
+    </section>
+
+    <div id="error" class="error hidden" role="alert"></div>
+    <div id="loading" class="loading hidden">Loading…</div>
+
+    <section id="views" class="hidden">
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="tm-view" role="tab">Teramind weekly</button>
+        <button class="tab" data-tab="dashboard" id="tab-overview" role="tab">Board overview</button>
+      </nav>
+
+      <!-- Teramind dashboard -->
+      <section id="tm-view" class="tab-panel">
+        <div class="card">
+          <div class="row space-between">
+            <div>
+              <h2 style="margin:0">Teramind Connectivity: Weekly Dashboard</h2>
+              <div id="tm-source" class="small muted"></div>
+            </div>
+            <button id="tm-download" class="primary">Download Excel</button>
+          </div>
+          <label class="small">Week0 ending date <input id="tm-start" type="date" /></label>
+          <span class="small muted"> · each next week = +7 days</span>
+        </div>
+
+        <details class="card" id="tm-mapping-card">
+          <summary>Column mapping (auto-detected by header name; change it if something's wrong)</summary>
+          <div id="tm-mapping" class="mapping"></div>
+        </details>
+
+        <div id="tm-insufficient" class="error hidden" role="alert"></div>
+
+        <div id="tm-content">
+          <div class="card">
+            <h3>Weekly Teramind connectivity</h3>
+            <div class="table-wrap no-max"><table id="tm-weekly" class="weekly"></table></div>
+          </div>
+
+          <div id="tm-kpis" class="kpis"></div>
+
+          <div class="charts">
+            <div class="card"><h3>Plan vs Actual installations per week</h3><div class="chart-box"><canvas id="tm-chart-plan" role="img" aria-label="Plan vs Actual per week, clustered columns"></canvas></div></div>
+            <div class="card"><h3>Cumulative installations</h3><div class="chart-box"><canvas id="tm-chart-cum" role="img" aria-label="Cumulative installations per week, line"></canvas></div></div>
+          </div>
+
+          <div class="charts">
+            <div class="card">
+              <h3>Teramind Status breakdown</h3>
+              <div class="table-wrap no-max"><table id="tm-status"></table></div>
+            </div>
+            <div class="card">
+              <h3>Reconciliation</h3>
+              <ul id="tm-checks" class="checks"></ul>
+              <h3 style="margin-top:16px">Compare with your numbers (optional)</h3>
+              <textarea id="tm-compare-input" rows="4" placeholder="One line per week, e.g.&#10;Week3: Plan 24, Actual 19, Rolloffs 1, Exemptions 0"></textarea>
+              <div class="row"><button id="tm-compare">Compare</button></div>
+              <div id="tm-compare-result" class="small"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Issues</h3>
+            <div id="tm-issues"></div>
+          </div>
+
+          <details class="card">
+            <summary>Data profile (distinct values in the key columns)</summary>
+            <div id="tm-profile" class="profile"></div>
+          </details>
+
+          <details class="card">
+            <summary>Excel formulas</summary>
+            <pre id="tm-formulas" class="formulas"></pre>
+          </details>
+        </div>
+      </section>
+
+      <!-- Generic board overview -->
+      <section id="dashboard" class="tab-panel hidden">
+        <h2 id="board-title"></h2>
+        <div id="kpis" class="kpis"></div>
+        <div id="charts" class="charts"></div>
+
+        <div class="card">
+          <div class="row space-between">
+            <h3>All items</h3>
+            <input id="search" type="search" placeholder="Search items…" />
+          </div>
+          <div class="table-wrap"><table id="items-table"></table></div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="teramind-core.js"></script>
+  <script src="teramind.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
